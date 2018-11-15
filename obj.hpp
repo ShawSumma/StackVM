@@ -7,6 +7,8 @@
 #include <map>
 #include <boost/variant.hpp>
 
+#define SHARED
+
 namespace obj {
     enum kind {
         val_other,
@@ -28,7 +30,11 @@ namespace obj {
     class obj;
     class table;
     class obj {
+        #ifdef SHARED
         std::shared_ptr<void> ptr;
+        #else
+        void* ptr;
+        #endif
     public:
         kind type;
         template<kind i, typename T>
@@ -49,6 +55,7 @@ namespace obj {
     template<kind i, typename T>
     void obj::from(T val) {
         type = i;
+        #ifdef SHARED
         if constexpr(i == val_int) {
             ptr = std::static_pointer_cast<void>(std::make_shared<uint64_t>(val));
         }
@@ -73,11 +80,18 @@ namespace obj {
         if constexpr(i == val_other) {
             ptr = std::static_pointer_cast<void>(std::make_shared<T>(val));
         }
+        #else
+        ptr = (void*) new T(val);
+        #endif
     }
 
     template<typename T>
     T obj::to() {
+        #ifdef SHARED
         return *std::static_pointer_cast<T>(ptr);
+        #else
+        return *((T*) ptr);
+        #endif
     }
     using fn = obj(*)(std::vector<obj>);
     using var = obj;

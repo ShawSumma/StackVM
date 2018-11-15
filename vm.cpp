@@ -40,7 +40,7 @@ namespace vm {
         std::vector<obj::obj> objects;
         std::vector<op::op> ops;
         std::vector<obj::obj> stack;
-        std::map<std::string, obj::obj> world;
+        std::unordered_map<std::string, obj::obj> world;
         uint64_t ptr = 0;
     public:
         void run_op();
@@ -72,9 +72,10 @@ namespace vm {
     }
 
     void vm::run_op() {
-        switch (ops[ptr].type) {
+        op::op cur = ops[ptr];
+        switch (cur.type) {
             case op::push_type: {
-                stack.push_back(objects[ops[ptr].helper]);
+                stack.push_back(objects[cur.helper]);
                 break;
             }
             case op::pop_type: {
@@ -83,7 +84,7 @@ namespace vm {
             }
             case op::push_int_type: {
                 obj::obj val;
-                val.from<obj::val_int, uint64_t>(ops[ptr].helper);
+                val.from<obj::val_int, uint64_t>(cur.helper);
                 stack.push_back(val);
                 break;
             }
@@ -118,7 +119,7 @@ namespace vm {
             }
 
             case op::load_type: {
-                std::string ind = objects[ops[ptr].helper].to<std::string>();
+                std::string ind = objects[cur.helper].to<std::string>();
                 if (world.count(ind) == 0) {
                     if (ind == "$") {
                         obj::obj obj;
@@ -136,7 +137,7 @@ namespace vm {
             }
 
             case op::sym_type: {
-                std::string ind = objects[ops[ptr].helper].to<std::string>();
+                std::string ind = objects[cur.helper].to<std::string>();
                 void *sym = stack.back().to<void*>();
                 obj::obj obj;
                 obj.from<obj::val_cfn, obj::cfn>((obj::cfn) dlsym(sym, ind.c_str()));
@@ -145,14 +146,14 @@ namespace vm {
             }
 
             case op::def_type: {
-                std::string ind = objects[ops[ptr].helper].to<std::string>();
+                std::string ind = objects[cur.helper].to<std::string>();
                 world[ind] = stack.back();
                 stack.pop_back();
                 break;
             }
 
             case op::call_type: {
-                uint64_t argc = ops[ptr].helper;
+                uint64_t argc = cur.helper;
                 std::vector<obj::obj> args(argc);
                 for (int64_t i = argc-1; i >= 0; i--) {
                     args[i] = stack.back();
@@ -171,7 +172,7 @@ namespace vm {
             case op::rev_call_type: {
                 obj::obj fn = stack.back();
                 stack.pop_back();
-                uint64_t argc = ops[ptr].helper;
+                uint64_t argc = cur.helper;
                 std::vector<obj::obj> args(argc);
                 for (int64_t i = argc-1; i >= 0; i--) {
                     args[i] = stack.back();
